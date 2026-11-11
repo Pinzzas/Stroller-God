@@ -54,3 +54,32 @@ export const PAUSE_LABEL = 'II'; // pause button label while walking
 export const RESUME_LABEL = '>'; // pause button label while paused
 export const SPEED_LABEL_NORMAL = '1x'; // speed button label at 1x
 export const SPEED_LABEL_FAST = '2x'; // speed button label at 2x
+
+// Week 3: signs at junctions
+export const WAIT_SIGN_MS = 3000; // how long the parent stops at a wait sign (walk-clock time)
+export const LONG_PRESS_MS = 500; // hold this long to pick a sign up on touch
+export const SIGN_TYPES = ['arrow', 'wait']; // allowed keys in a level's "signs" field
+export const ARROW_DIRECTIONS = ['up', 'right', 'down', 'left']; // clockwise order
+export const SIGN_SIZE = 40; // sign size on a tile and on its button, pixels
+export const SIGN_ARROW_COLOUR = 0x3f8f8a; // teal triangle
+export const SIGN_WAIT_COLOUR = 0xe0703a; // orange-red circle
+export const VALID_TILE_COLOUR = 0x5fbf5f; // green outline where the selected sign fits
+export const VALID_TILE_WIDTH = 4; // green outline thickness in pixels
+export const ARROW_BUTTON_X = 64; // centre x of the arrow button
+export const WAIT_BUTTON_X = 160; // centre x of the wait button
+export const SIGN_COUNT_FONT_SIZE = '20px'; // count number on a sign button
+export const SIGN_COUNT_OFFSET = 24; // count sits this far right of and below the button centre
+export const SIGN_BUTTON_EMPTY_ALPHA = 0.4; // faded look when the count is 0
+export const SIGN_FULL_ALPHA = 1; // normal look of a sign button
+export const LEVEL_URL_PARAM = 'level'; // name in the link, e.g. ?level=3
+export const LEVEL_IDS = { 1: 'level-01', 3: 'level-03' }; // which file each number opens
+export const DEFAULT_LEVEL_ID = 'level-01'; // opened when the link has no or an unknown number
+
+// Draw order, bottom to top
+export const DEPTH_TILES = 0;
+export const DEPTH_VALID_OUTLINES = 1;
+export const DEPTH_SIGNS = 2;
+export const DEPTH_TAP_OUTLINE = 3;
+export const DEPTH_WALKERS = 4;
+export const DEPTH_BUTTONS = 5;
+export const DEPTH_TEXTS = 6;

@@ -45,3 +45,19 @@ export function togglePause(state) {
 export function toggleSpeed(multiplier, normal, fast) {
   return multiplier === normal ? fast : normal;
 }
+
+// One frame of walking with wait signs. deltaMs is already multiplied by the speed multiplier.
+// walker is { distance, waitLeftMs, waitedIndex }. Returns a new walker.
+export function stepWalk(walker, deltaMs, speed, path, signs, waitMs) {
+  const { distance, waitLeftMs, waitedIndex } = walker;
+  if (waitLeftMs > 0) {
+    return { distance, waitLeftMs: Math.max(0, waitLeftMs - deltaMs), waitedIndex };
+  }
+  const newDistance = Math.min(distance + (deltaMs / MS_PER_SECOND) * speed, path.length - 1);
+  for (let i = Math.floor(distance) + 1; i <= Math.floor(newDistance); i++) {
+    if (i <= waitedIndex || i <= distance) continue;
+    const hasWait = signs.some((s) => s.type === 'wait' && s.col === path[i].col && s.row === path[i].row);
+    if (hasWait) return { distance: i, waitLeftMs: waitMs, waitedIndex: i };
+  }
+  return { distance: newDistance, waitLeftMs: 0, waitedIndex };
+}

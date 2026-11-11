@@ -1,4 +1,4 @@
-import { TILE_SYMBOLS, WALKABLE_TILES } from '../config.js';
+import { TILE_SYMBOLS, WALKABLE_TILES, SIGN_TYPES } from '../config.js';
 
 const STEPS = [
   { col: 0, row: -1 },
@@ -31,6 +31,17 @@ export function validateLevel(json) {
 
   if (starts.length === 1 && finishes.length === 1 && !canWalk(tiles, starts[0], finishes[0])) {
     problems.push('The finish cannot be reached from the start');
+  }
+  if (json.signs !== undefined) {
+    const signs = json.signs;
+    if (signs === null || typeof signs !== 'object' || Array.isArray(signs)) {
+      problems.push('"signs" must be a list of sign counts');
+    } else {
+      for (const [key, count] of Object.entries(signs)) {
+        if (!SIGN_TYPES.includes(key)) problems.push(`Unknown sign type "${key}"`);
+        else if (!Number.isInteger(count) || count < 0) problems.push(`Sign count for "${key}" must be a whole number, 0 or more`);
+      }
+    }
   }
   return problems;
 }
