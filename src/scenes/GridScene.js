@@ -58,6 +58,21 @@ import {
   SIGN_FULL_ALPHA,
   LEVEL_IDS,
   DEFAULT_LEVEL_ID,
+  HAZARD_KINDS,
+  HAZARD_WARNING_MS,
+  TIMED_ACTIVE_MS,
+  TRIGGER_RADIUS_TILES,
+  TRIGGER_WARNING_RADIUS_TILES,
+  ROAM_SPEED,
+  HAZARD_SIZE,
+  HAZARD_ACTIVE_SCALE,
+  HAZARD_DONE_ALPHA,
+  HAZARD_RING_COLOUR,
+  HAZARD_RING_RADIUS,
+  HAZARD_RING_WIDTH,
+  WARNING_PULSE_MS,
+  WARNING_PULSE_SCALE,
+  DEPTH_HAZARDS,
   DEPTH_TILES,
   DEPTH_VALID_OUTLINES,
   DEPTH_SIGNS,
@@ -74,6 +89,7 @@ import { tileToPixel, pixelToTile } from '../logic/tileMath.js';
 import { findPath } from '../logic/findPath.js';
 import { reroute } from '../logic/route.js';
 import { signAt, canPlaceSign, placeSign, rotateArrow, pickUpSign, pressKind } from '../logic/signs.js';
+import { updateHazards, pulseScale } from '../logic/hazards.js';
 import { levelIdFromUrl } from '../logic/levelChoice.js';
 import {
   stepWalk,
@@ -86,6 +102,14 @@ import {
 
 const LEVEL_FILES = { 'level-01': level01, 'level-03': level03 };
 const SIGN_BUTTON_XS = { arrow: ARROW_BUTTON_X, wait: WAIT_BUTTON_X };
+
+const HAZARD_TUNING = {
+  warningMs: HAZARD_WARNING_MS,
+  timedActiveMs: TIMED_ACTIVE_MS,
+  triggerRadius: TRIGGER_RADIUS_TILES,
+  warningRadius: TRIGGER_WARNING_RADIUS_TILES,
+  roamSpeed: ROAM_SPEED,
+};
 
 const TILE_COLOURS = {
   grass: GRASS_COLOUR,
@@ -142,6 +166,11 @@ export class GridScene extends Phaser.Scene {
     this.stroller = this.add.rectangle(0, 0, STROLLER_SIZE, STROLLER_SIZE, STROLLER_COLOUR).setDepth(DEPTH_WALKERS);
     this.placeWalker(0);
 
+    this.walkMs = 0;
+    this.hazardStates = null;
+    this.hazardObjects = this.level.hazards.map((hazard) => this.makeHazardObject(hazard));
+    this.refreshHazards();
+
     this.pauseButton = this.makeButton(PAUSE_BUTTON_X, PAUSE_LABEL, () => this.pressPause());
     this.speedButton = this.makeButton(SPEED_BUTTON_X, SPEED_LABEL_NORMAL, () => this.pressSpeed());
     this.showButtons(false);
@@ -182,10 +211,13 @@ export class GridScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    if (this.hazardObjects) this.animateRings(time);
     if (this.state !== 'walking') return;
     const deltaMs = advanceTime(0, delta, this.state, this.multiplier);
+    this.walkMs += deltaMs;
     this.walker = stepWalk(this.walker, deltaMs, WALK_SPEED, this.path, this.signs, WAIT_SIGN_MS);
     this.placeWalker(this.walker.distance);
+    this.refreshHazards();
     if (hasArrived(this.walker.distance, this.path.length)) {
       this.state = 'won';
       this.showButtons(false);
@@ -350,6 +382,45 @@ export class GridScene extends Phaser.Scene {
     for (const button of [this.pauseButton, this.speedButton]) {
       button.square.setVisible(visible);
       button.label.setVisible(visible);
+    }
+  }
+
+  makeHazardObject(hazard) {
+    const colour = HAZARD_KINDS[hazard.kind].colour;
+    const square = this.add.rectangle(0, 0, HAZARD_SIZE, HAZARD_SIZE, colour).setDepth(DEPTH_HAZARDS);
+    const ring = this.add
+      .circle(0, 0, HAZARD_RING_RADIUS)
+      .setStrokeStyle(HAZARD_RING_WIDTH, HAZARD_RING_COLOUR)
+      .setDepth(DEPTH_HAZARDS)
+      .setVisible(false);
+    return { square, ring };
+  }
+
+  // Recomputes every hazard's state from the walk clock and the stroller, then draws it.
+  refreshHazards() {
+    const stroller = pointOnPath(this.path, this.walker.distance);
+    this.hazardStates = updateHazards(
+      this.level.hazards, HAZARD_KINDS, this.hazardStates, this.walkMs, stroller, HAZARD_TUNING
+    );
+    this.hazardStates.forEach((hazard, i) => {
+      const { square, ring } = this.hazardObjects[i];
+      const { x, y } = tileToPixel(hazard.col, hazard.row, TILE_SIZE);
+      const type = HAZARD_KINDS[this.level.hazards[i].kind].type;
+      const goingOff = hazard.state === 'active' && (type === 'triggered' || type === 'timed');
+      square.setPosition(x, y);
+      square.setScale(goingOff ? HAZARD_ACTIVE_SCALE : 1);
+      square.setAlpha(hazard.state === 'done' ? HAZARD_DONE_ALPHA : 1);
+      ring.setPosition(x, y);
+      ring.setVisible(hazard.state === 'warning' || goingOff);
+      ring.setData('warning', hazard.state === 'warning');
+    });
+  }
+
+  // The warning ring pulses; the going-off ring stays solid. Only an animation.
+  animateRings(time) {
+    const scale = pulseScale(time, WARNING_PULSE_MS, WARNING_PULSE_SCALE);
+    for (const { ring } of this.hazardObjects) {
+      ring.setScale(ring.getData('warning') ? scale : HAZARD_ACTIVE_SCALE);
     }
   }
 

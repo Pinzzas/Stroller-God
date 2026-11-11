@@ -3,6 +3,11 @@
   "name": "Old-town cobblestones",
   "cols": 16,
   "rows": 9,
+  "hazards": [
+    { "id": "bells-1", "kind": "bells", "col": 5, "row": 3, "atMs": 5000 },
+    { "id": "neighbour-1", "kind": "neighbour", "col": 9, "row": 7 },
+    { "id": "cobbles-1", "kind": "cobbles", "col": 13, "row": 4 }
+  ],
   "tiles": [
     "................",
     "................",

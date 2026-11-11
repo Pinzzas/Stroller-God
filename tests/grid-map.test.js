@@ -62,7 +62,7 @@ test('AC4: parseLevel returns size, 9x16 tile names and key tiles', () => {
   assert.equal(p.id, 'level-01');
 });
 test('AC4/edge: parseLevel and validateLevel ignore unknown keys', () => {
-  const l = { ...load(), hazards: [{ a: 1 }], items: [] };
+  const l = { ...load(), extras: [{ a: 1 }], items: [] };
   assert.deepEqual(validateLevel(l), []);
   assert.equal(parseLevel(l).cols, 16);
 });
