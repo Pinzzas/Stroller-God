@@ -12,5 +12,5 @@ export function parseLevel(json) {
       return name;
     })
   );
-  return { id: json.id, name: json.name, cols: json.cols, rows: json.rows, tiles, start, finish };
+  return { id: json.id, name: json.name, cols: json.cols, rows: json.rows, tiles, start, finish, hazards: json.hazards || [] };
 }

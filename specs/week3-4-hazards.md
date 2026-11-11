@@ -1,6 +1,6 @@
 # Week 3–4: Hazard system (static, triggered, roaming, timed)
 
-Build plan: DESIGN.md section 10, Week 3–4. Status: **awaiting owner approval**.
+Build plan: DESIGN.md section 10, Week 3–4. Status: **approved by owner**.
 Three choices are open (see "Options for the owner"); the spec is written with
 the recommended option for each. The level file changes below are a
 **proposal**: they are made only after you approve.

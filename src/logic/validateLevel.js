@@ -1,4 +1,4 @@
-import { TILE_SYMBOLS, WALKABLE_TILES, SIGN_TYPES } from '../config.js';
+import { TILE_SYMBOLS, WALKABLE_TILES, SIGN_TYPES, HAZARD_KINDS, TRIGGER_RADIUS_TILES } from '../config.js';
 
 const STEPS = [
   { col: 0, row: -1 },
@@ -43,7 +43,85 @@ export function validateLevel(json) {
       }
     }
   }
+  if (json.hazards !== undefined) checkHazards(json, problems);
   return problems;
+}
+
+function isWhole(n) {
+  return Number.isInteger(n);
+}
+
+function insideGrid(json, col, row) {
+  return isWhole(col) && isWhole(row) && col >= 0 && col < json.cols && row >= 0 && row < json.rows;
+}
+
+function tileName(json, col, row) {
+  return TILE_SYMBOLS[json.tiles[row][col]];
+}
+
+function checkHazards(json, problems) {
+  if (!Array.isArray(json.hazards)) {
+    problems.push('"hazards" must be a list');
+    return;
+  }
+  const ids = new Set();
+  const used = new Set();
+  json.hazards.forEach((hazard, i) => {
+    const label = `Hazard ${i + 1}`;
+    if (typeof hazard.id !== 'string' || hazard.id === '') problems.push(`${label} has no id`);
+    else if (ids.has(hazard.id)) problems.push(`${label}: id "${hazard.id}" is used twice`);
+    else ids.add(hazard.id);
+    const kind = HAZARD_KINDS[hazard.kind];
+    if (kind === undefined) {
+      problems.push(`${label} has unknown kind "${hazard.kind}"`);
+      return;
+    }
+    if (kind.type === 'roaming') {
+      checkRoute(json, hazard, label, problems);
+      return;
+    }
+    if (!insideGrid(json, hazard.col, hazard.row)) {
+      problems.push(`${label} needs a whole-number col and row inside the grid`);
+      return;
+    }
+    const name = tileName(json, hazard.col, hazard.row);
+    if (kind.type === 'static' && name !== 'path') problems.push(`${label} (${hazard.kind}) must sit on a plain path tile`);
+    if (kind.type !== 'static' && name !== 'grass') problems.push(`${label} (${hazard.kind}) must sit on a grass tile`);
+    if (kind.type === 'triggered' && !walkableNear(json, hazard.col, hazard.row)) {
+      problems.push(`${label} (${hazard.kind}) has no path within ${TRIGGER_RADIUS_TILES} tiles, so it could never go off`);
+    }
+    if (kind.type === 'timed' && (!isWhole(hazard.atMs) || hazard.atMs < 0)) {
+      problems.push(`${label} (${hazard.kind}) needs "atMs" as a whole number, 0 or more`);
+    }
+    const key = `${hazard.col},${hazard.row}`;
+    if (used.has(key)) problems.push(`${label} shares tile ${key} with another hazard`);
+    used.add(key);
+  });
+}
+
+function walkableNear(json, col, row) {
+  for (let r = row - TRIGGER_RADIUS_TILES; r <= row + TRIGGER_RADIUS_TILES; r++) {
+    for (let c = col - TRIGGER_RADIUS_TILES; c <= col + TRIGGER_RADIUS_TILES; c++) {
+      if (isWalkable(json.tiles, c, r)) return true;
+    }
+  }
+  return false;
+}
+
+function checkRoute(json, hazard, label, problems) {
+  const route = hazard.route;
+  if (!Array.isArray(route) || route.length < 2) {
+    problems.push(`${label} (${hazard.kind}) needs a route of at least 2 tiles`);
+    return;
+  }
+  route.forEach((tile, i) => {
+    if (!tile || !insideGrid(json, tile.col, tile.row)) {
+      problems.push(`${label} route tile ${i + 1} is outside the grid`);
+    } else if (i > 0 && route[i - 1] && insideGrid(json, route[i - 1].col, route[i - 1].row)) {
+      const gap = Math.abs(tile.col - route[i - 1].col) + Math.abs(tile.row - route[i - 1].row);
+      if (gap !== 1) problems.push(`${label} route step ${i + 1} must move exactly one tile up, down, left or right`);
+    }
+  });
 }
 
 function isWalkable(tiles, col, row) {

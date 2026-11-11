@@ -75,6 +75,29 @@ export const LEVEL_URL_PARAM = 'level'; // name in the link, e.g. ?level=3
 export const LEVEL_IDS = { 1: 'level-01', 3: 'level-03' }; // which file each number opens
 export const DEFAULT_LEVEL_ID = 'level-01'; // opened when the link has no or an unknown number
 
+// Week 3-4: hazards
+export const HAZARD_TYPES = ['static', 'triggered', 'timed', 'roaming']; // allowed types
+export const HAZARD_KINDS = {
+  cobbles: { type: 'static', colour: 0x6b6259 }, // rough patch
+  neighbour: { type: 'triggered', colour: 0xb48ad6 }, // a person
+  bells: { type: 'timed', colour: 0xd9a521 }, // a bell
+  pigeons: { type: 'roaming', colour: 0x8a94a6 }, // a swarm
+}; // kind -> type and placeholder colour
+export const HAZARD_WARNING_MS = 2500; // timed hazards warn this long before atMs
+export const TIMED_ACTIVE_MS = 4000; // how long a timed hazard goes off
+export const TRIGGER_RADIUS_TILES = 2; // triggered hazard goes off within this tile distance
+export const TRIGGER_WARNING_RADIUS_TILES = 4; // triggered hazard warns within this tile distance
+export const ROAM_SPEED = 1; // roaming hazards, tiles per second (walk clock)
+export const HAZARD_SIZE = 44; // hazard square, pixels
+export const HAZARD_ACTIVE_SCALE = 1.3; // size when going off
+export const HAZARD_DONE_ALPHA = 0.35; // faded look when done
+export const HAZARD_RING_COLOUR = 0xd9483b; // warning / going-off ring, warm red
+export const HAZARD_RING_RADIUS = 30; // ring radius, pixels
+export const HAZARD_RING_WIDTH = 4; // ring line thickness, pixels
+export const WARNING_PULSE_MS = 400; // half a pulse (grow or shrink)
+export const WARNING_PULSE_SCALE = 1.25; // biggest ring size while pulsing
+export const DEPTH_HAZARDS = 0.5; // between tiles and green outlines
+
 // Draw order, bottom to top
 export const DEPTH_TILES = 0;
 export const DEPTH_VALID_OUTLINES = 1;
