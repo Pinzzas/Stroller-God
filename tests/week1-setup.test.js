@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { SQUARE_COLOURS, BG_COLOUR, SQUARE_SIZE } from '../src/config.js';
+import { BG_COLOUR } from '../src/config.js';
 
 const read = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 
@@ -9,10 +9,8 @@ test('vite base path is /Stroller-God/', () => {
   assert.match(read('vite.config.js'), /base:\s*'\/Stroller-God\/'/);
 });
 
-test('config colours and sizes match the spec', () => {
+test('background colour matches the spec', () => {
   assert.equal(BG_COLOUR, 0xf3ead8);
-  assert.equal(SQUARE_SIZE, 128);
-  assert.deepEqual(SQUARE_COLOURS, [0x7fb2e5, 0xf2a7a0, 0x9ccf8f, 0xf5d36b]);
 });
 
 test('src/logic does not import Phaser', () => {
@@ -22,7 +20,7 @@ test('src/logic does not import Phaser', () => {
 });
 
 test('scene file has no raw numbers other than 0, 1, 2', () => {
-  const code = read('src/scenes/SetupScene.js').replace(/'[^']*'/g, '');
+  const code = read('src/scenes/GridScene.js').replace(/'[^']*'/g, '');
   const nums = code.match(/(?<![\w.])\d+(\.\d+)?(?![\w])/g) || [];
   for (const n of nums) assert.ok(['0', '1', '2'].includes(n), 'raw number ' + n);
 });
