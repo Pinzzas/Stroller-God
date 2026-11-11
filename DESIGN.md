@@ -175,7 +175,7 @@ Recommended setup: Phaser 3 + plain JavaScript (same as the side-scroller) in a 
 ### Tasks in order (one task per Claude Code session; after each one, play the GitHub Pages link)
 - **Week 1:** Create the files from the project setup doc (CLAUDE.md + 6 subagents), then set up Phaser, Vite and auto-deploy to GitHub Pages.
 - **Week 1–2:** Grid map loaded from a level JSON file, drawn with coloured squares.
-- **Week 2:** Parent and stroller walk the path at a steady speed; reaching the finish wins.
+- **Week 2:** Parent and stroller walk the path at a steady speed; reaching the finish wins. Pause (Space / pause button) and 2x speed (F / fast-forward button).
 - **Week 3:** Arrow and wait signs at junctions.
 - **Week 3–4:** Hazard system (static, triggered, roaming, timed) with 3 hazards from level 1.
 - **Week 4:** Item tray with drag and drop, item counts, right and wrong matches.
