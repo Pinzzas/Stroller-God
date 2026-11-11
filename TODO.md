@@ -5,6 +5,10 @@
 - **Week 1–2: Grid map** — level 1 loaded from `levels/level-01.json` and drawn as coloured squares; tap outlines a tile; plain error text if the level file is broken. Spec: `specs/week1-2-grid-map.md`.
 
 ## Leftovers (not urgent)
+- `validateLevel` crashes (blank screen) on a `null` entry in `hazards`. From Week 3–4 review.
+- `validateLevel` crashes if a hazard sits on a tile row that is missing from the file. From Week 3–4 review.
+- Hazard kinds like `"constructor"` pass as known (use `Object.hasOwn`). Same lookup in `hazards.js`. From Week 3–4 review.
+- `HAZARD_TYPES` in `src/config.js` is unused. From Week 3–4 review.
 - `findPath` takes the first open neighbour at each junction, so on levels with forks it can take a dead-end branch. Fix in Week 3 with signs. From Week 2 review.
 - `ERROR_ORIGIN` is also used for normal text (hint, win and button labels). Rename to `TEXT_ORIGIN`. From Week 2 review.
 - Tap outline may overlap neighbouring tiles by about 1 px (cosmetic). From Week 1–2 review.
