@@ -13,3 +13,4 @@ export const TITLE_TEXT = 'Stroller God – setup OK';
 export const TITLE_Y = 48; // pixels from the top
 export const TITLE_FONT_SIZE = '32px';
 export const TITLE_COLOUR = '#4a3f35';
+export const TITLE_ORIGIN = 0.5; // centre the title on its position

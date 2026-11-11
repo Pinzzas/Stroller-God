@@ -9,6 +9,7 @@ import {
   TITLE_Y,
   TITLE_FONT_SIZE,
   TITLE_COLOUR,
+  TITLE_ORIGIN,
 } from '../config.js';
 import { nextColourIndex } from '../logic/nextColourIndex.js';
 
@@ -26,7 +27,7 @@ export class SetupScene extends Phaser.Scene {
         fontSize: TITLE_FONT_SIZE,
         color: TITLE_COLOUR,
       })
-      .setOrigin(0.5);
+      .setOrigin(TITLE_ORIGIN);
 
     this.colourIndex = 0;
     this.square = this.add.rectangle(
