@@ -33,6 +33,7 @@ One gesture does almost everything: drag from the tray, drop on a tile.
 | Action | Mouse (PC) | Touch (later) |
 |---|---|---|
 | Place item or sign | Drag from tray to tile | Drag with finger |
+| Place an item (tap) | Click an item, then click a hazard | Tap an item, then tap a hazard |
 | Pick an item back up | Right-click it | Long-press it |
 | Rotate a sign | Scroll wheel or R | Tap it |
 | Pause | Space | Pause button |

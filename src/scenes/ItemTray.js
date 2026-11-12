@@ -17,13 +17,15 @@ import {
   ITEM_TRAY_FIRST_X,
   ITEM_TRAY_SPACING,
   ITEM_COUNT_OFFSET,
+  TAP_MOVE_TOLERANCE_PX,
+  BUTTON_ACTIVE_COLOUR,
   DEPTH_TAP_OUTLINE,
   DEPTH_BUTTONS,
   DEPTH_TEXTS,
   DEPTH_DRAG,
 } from '../config.js';
 import { tileToPixel, pixelToTile } from '../logic/tileMath.js';
-import { trayItems, traySlotX } from '../logic/items.js';
+import { trayItems, traySlotX, pressGesture } from '../logic/items.js';
 
 // A placeholder rectangle for one item, centred on x, y.
 export function makeItemShape(scene, type, x, y) {
@@ -32,7 +34,8 @@ export function makeItemShape(scene, type, x, y) {
 }
 
 // The item buttons in the bottom-left corner, and the dragging of items out of them.
-// callbacks: canDrag(), onPickUp(), isTarget(col, row), onDrop(item, x, y)
+// A press that barely moves is a tap (onTap); one that moves further becomes a drag.
+// callbacks: canDrag(), onPickUp(), onTap(item), isTarget(col, row), onDrop(item, x, y)
 export class ItemTray {
   constructor(scene, level, supply, callbacks) {
     this.scene = scene;
@@ -40,6 +43,7 @@ export class ItemTray {
     this.supply = supply;
     this.callbacks = callbacks;
     this.drag = null;
+    this.press = null;
     this.buttons = [];
 
     this.outline = scene.add
@@ -65,7 +69,7 @@ export class ItemTray {
       .rectangle(x, ITEM_TRAY_Y, ITEM_BUTTON_SIZE, ITEM_BUTTON_SIZE, BUTTON_COLOUR)
       .setDepth(DEPTH_BUTTONS)
       .setInteractive();
-    square.on('pointerdown', (pointer) => this.startDrag(pointer, type));
+    square.on('pointerdown', (pointer) => this.startPress(pointer, type));
     const icon = makeItemShape(scene, type, x, ITEM_TRAY_Y).setDepth(DEPTH_BUTTONS);
     const count = scene.add
       .text(x + ITEM_COUNT_OFFSET, ITEM_TRAY_Y + ITEM_COUNT_OFFSET, '', {
@@ -90,6 +94,7 @@ export class ItemTray {
 
   // Hides the whole tray and ends any drag with nothing used.
   hide() {
+    this.press = null;
     this.cancelDrag();
     for (const button of this.buttons) {
       button.square.setVisible(false);
@@ -98,8 +103,21 @@ export class ItemTray {
     }
   }
 
+  // Remembers where a press began; it becomes a tap or a drag later.
+  startPress(pointer, type) {
+    if (this.drag !== null || !this.callbacks.canDrag()) return;
+    if (this.supply[type] <= 0) return;
+    this.press = { type, pointerId: pointer.id, startX: pointer.worldX, startY: pointer.worldY };
+  }
+
+  // Turns the selected item's button yellow (or none).
+  showSelected(type) {
+    for (const button of this.buttons) {
+      button.square.setFillStyle(button.type === type ? BUTTON_ACTIVE_COLOUR : BUTTON_COLOUR);
+    }
+  }
+
   startDrag(pointer, type) {
-    if (this.drag !== null || !this.callbacks.canDrag() || this.supply[type] <= 0) return;
     this.callbacks.onPickUp();
     const shape = makeItemShape(this.scene, type, pointer.worldX, pointer.worldY).setDepth(DEPTH_DRAG);
     this.drag = { type, pointerId: pointer.id, shape };
@@ -108,6 +126,15 @@ export class ItemTray {
 
   // The item sits centred on the pointer; the tile under the pointer is outlined.
   moveDrag(pointer) {
+    if (this.press !== null && pointer.id === this.press.pointerId) {
+      const dx = pointer.worldX - this.press.startX;
+      const dy = pointer.worldY - this.press.startY;
+      if (pressGesture(dx, dy, TAP_MOVE_TOLERANCE_PX) === 'drag') {
+        const { type } = this.press;
+        this.press = null;
+        this.startDrag(pointer, type);
+      }
+    }
     if (this.drag === null || pointer.id !== this.drag.pointerId) return;
     const x = pointer.worldX;
     const y = pointer.worldY;
@@ -123,6 +150,12 @@ export class ItemTray {
   }
 
   endDrag(pointer, insideGame) {
+    if (this.press !== null && pointer.id === this.press.pointerId) {
+      const { type } = this.press;
+      this.press = null;
+      if (insideGame) this.callbacks.onTap(type);
+      return;
+    }
     if (this.drag === null || pointer.id !== this.drag.pointerId) return;
     const { type } = this.drag;
     this.cancelDrag();
