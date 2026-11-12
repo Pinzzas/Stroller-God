@@ -6,6 +6,9 @@
 - **Week 1–2: Grid map** — level 1 loaded from `levels/level-01.json` and drawn as coloured squares; tap outlines a tile; plain error text if the level file is broken. Spec: `specs/week1-2-grid-map.md`.
 
 ## Leftovers (not urgent)
+- Right-click on a tray button now selects the item (same cause as the earlier right-click leftover). Fix: ignore right button in `startPress`. From Week 4 tap-and-drop review.
+- A tray press counts as a tap without checking the release position. Harmless in practice. From Week 4 tap-and-drop review.
+- `GridScene.js` has grown to about 600 lines (see the rule 7 leftover above). From Week 4 tap-and-drop review.
 - Tray outline stays green/red from the last finger move if a hazard changes state while you hold still. Fix: refresh each frame during a drag. From Week 4 review.
 - Right-click on a tray button starts a drag; right-click on the grid during a drag in `ready` can start the walk. From Week 4 review.
 - `validateLevel` message for `items` says "list" but it is a set of counts like `{ "plank": 2 }`. From Week 4 review.

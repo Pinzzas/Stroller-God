@@ -243,7 +243,10 @@ export class GridScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    if (this.hazardObjects) this.drawHazards();
+    if (this.hazardObjects) {
+      this.drawHazards();
+      this.refreshItemOutlines();
+    }
     if (this.state !== 'walking') return;
     const deltaMs = advanceTime(0, delta, this.state, this.multiplier);
     this.walkMs += deltaMs;
