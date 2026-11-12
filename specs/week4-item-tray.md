@@ -1,8 +1,9 @@
 # Week 4: Item tray with drag and drop, item counts, right and wrong matches
 
 Build plan: DESIGN.md section 10, Week 4. Status: **waiting for owner approval**.
-Three choices are open (see "Options for the owner"); the spec is written with
-the recommended option for each.
+Five choices are open (see "Options for the owner"); the spec is written with
+the recommended option for each. Choices 4–5 came with the owner's tap-and-drop
+request.
 
 ## In plain words
 Level 1 gets an item tray in the bottom-left corner: a plank (brown bar, 2 of
@@ -13,6 +14,8 @@ green if a hazard there can take an item, red if not. Let go on a hazard:
   hazard calms down (no more ring, no growing).
 - **Wrong item:** it's used up anyway: it shrinks away and the hazard shakes.
 Let go anywhere else and nothing is used. Counts go down as you use items.
+You can also **tap** an item (its button turns yellow), then tap a hazard: same
+result as dragging it there.
 Nothing touches the baby yet: the wake meter comes in Week 5.
 
 ## Goal
@@ -58,6 +61,20 @@ whether I picked the right one.
   the target is the tile under the item. Nicer on small phones, but you
   aim with a point you aren't touching.
 
+**4. Tap-and-drop: tapping a tile with no drop target (grass, plain path,
+fixed or `done` hazard)**
+- **A (recommended): cancels; nothing used, selection ends.** Same as letting
+  go of a drag there. The map fills the whole screen, so this is also the easy
+  "tap outside to cancel".
+- B: keeps the item selected, like signs do on a tile where they don't fit.
+  Forgiving, but then the only cancel is tapping the button again.
+
+**5. Tap-and-drop: showing where the selected item can go**
+- **A (recommended): every current drop target gets a green outline**, like a
+  selected sign; a hazard loses its outline the moment it turns `done`.
+  Consistent with signs. It still only says "hazard here", not "right item".
+- B: no outlines, only the yellow button. Less to build, harder to aim.
+
 ## Words used
 - **Item type:** `plank`, `speaker`, `shh` (`ITEM_TYPES`).
 - **Supply:** `{ plank, speaker, shh }` counts left this walk.
@@ -73,6 +90,9 @@ States stay `ready`, `walking`, `paused`, `won` (plus level error).
 | Pick up an item | Press on a tray button with count > 0 | Touch it | ready, walking, paused |
 | Aim | Move while holding; item follows the pointer | Move finger | same |
 | Drop | Release | Lift finger | same |
+| Select an item (tap-and-drop) | Click a tray button with count > 0 without moving | Tap it | same |
+| Drop the selected item | Click a tile | Tap a tile | same |
+| Cancel the selection | Click the yellow button again, a no-target tile, or outside the game | Tap the same | same |
 
 - While dragging, only the tile under the pointer gets an outline
   (`DROP_OUTLINE_WIDTH`): `VALID_TILE_COLOUR` on a drop target, `INVALID_TILE_COLOUR`
@@ -90,6 +110,33 @@ States stay `ready`, `walking`, `paused`, `won` (plus level error).
   may still play.
 - Only the first finger counts; dragging must not scroll, zoom or open a
   phone menu.
+
+### Tap and drop (added on owner request; works with drag, doesn't replace it)
+- **Tap or drag?** A press on a tray button that ends within
+  `TAP_MOVE_TOLERANCE_PX` of where it started is a tap; once the pointer moves
+  further, it's a drag. Nothing follows the pointer until it is a drag.
+- **Select:** tapping a button with count > 0 selects that item: the button
+  fill turns `BUTTON_ACTIVE_COLOUR` (as a selected sign), the count does not
+  change, and (choice 5A) every current drop target gets a `VALID_TILE_COLOUR`
+  outline drawn like a sign outline. Only one thing is selected at a time.
+- **Switch:** tapping another item's button selects that one instead.
+  Tapping a count-0 button changes nothing (the current selection stays).
+- **Drop:** tapping a tile runs exactly the drag rules at that moment
+  (`dropItem`): right match, wrong match or nothing used, with the same
+  feedback. After any tile tap the selection ends (choice 4A).
+- **Cancel, nothing used:** tap the selected button again, a tile with no drop
+  target, or outside the game picture.
+- **No side effects:** while an item is selected, a tap, right-click or long
+  press on the map only does the item's drop or cancel. It never starts the
+  walk, sets the Week 2 tap outline, or places, turns or picks up a sign.
+- **With signs:** selecting an item clears a selected sign and its outlines;
+  selecting a sign clears a selected item.
+- **With drag:** starting a drag from any tray button clears the selection;
+  the dragged item is the one pressed.
+- **Pause, 2x:** the **II** and 2x buttons work as usual and keep the
+  selection. Selecting and dropping work while paused.
+- **End:** on `won` the selection clears with the tray. A reload (and the
+  Week 5 restart) starts with nothing selected.
 
 ### Right match
 Count −1; the item is drawn centred on the hazard (`DEPTH_ITEMS`). A
@@ -160,10 +207,11 @@ is not in `ITEM_TYPES`, or a count is not a whole number 0 or more.
 | `WRONG_SHAKE_STEP_MS` | 75 | Shake changes direction this often |
 | `DEPTH_ITEMS` | 0.75 | Placed items: above hazards, below sign outlines |
 | `DEPTH_DRAG` | 7 | Dragged item: above everything |
+| `TAP_MOVE_TOLERANCE_PX` | 12 | A tray press that moves at most this far is a tap (select), further is a drag |
 
 Reused: `BUTTON_COLOUR`, `BUTTON_TEXT_COLOUR`, `SIGN_COUNT_FONT_SIZE`,
 `SIGN_BUTTON_EMPTY_ALPHA`, `VALID_TILE_COLOUR`, `HAZARD_RING_RADIUS`,
-`HAZARD_RING_WIDTH`.
+`HAZARD_RING_WIDTH`, `BUTTON_ACTIVE_COLOUR` (selected item button).
 
 ## Logic (src/logic/items.js, pure, no Phaser)
 `hazards` is the level's list; `states` is the `updateHazards` result;
@@ -184,6 +232,14 @@ Reused: `BUTTON_COLOUR`, `BUTTON_TEXT_COLOUR`, `SIGN_COUNT_FONT_SIZE`,
   otherwise `'wrong'` (count −1, `fixedIds` unchanged).
 - `withFixes(states, fixedIds) → states` — copies, with `state: 'fixed'` for
   fixed ids. The scene draws `'fixed'` as described above.
+- `pressGesture(dx, dy, tolerancePx) → 'tap' | 'drag'` — `'tap'` when
+  `√(dx² + dy²) ≤ tolerancePx`.
+- `selectItem(selected, supply, item) → item | null` — `null` if `item` is
+  already `selected`; `item` if `supply[item]` is above 0; otherwise `selected`
+  unchanged.
+- `dropTargets(hazards, kinds, states, fixedIds) → [id, ...]` — every hazard
+  `dropTarget` would accept, in level order (for the choice 5A outlines).
+- A tap-drop calls `dropItem` with the selected item and the tapped tile.
 
 Also: `validateLevel` gets the `"items"` checks; `parseLevel` adds
 `items: startingItems(json.items, ITEM_TYPES)`.
@@ -255,6 +311,35 @@ Also: `validateLevel` gets the `"items"` checks; `parseLevel` adds
     `src/config.js` or the level file (the "no raw numbers other than 0, 1, 2"
     test covers new files). `src/logic/` does not import Phaser.
 
+Tap and drop:
+
+26. `pressGesture(0, 0, 12)` and `(12, 0, 12)` → `'tap'`; `(9, 9, 12)` and
+    `(0, 13, 12)` → `'drag'`.
+27. `selectItem(null, full, 'plank')` → `'plank'`; `('plank', full, 'plank')` →
+    `null`; `('plank', full, 'shh')` → `'shh'`; with supply
+    `{plank: 0, speaker: 1, shh: 1}`: `(null, …, 'plank')` → `null` and
+    `('shh', …, 'plank')` → `'shh'`. Inputs unchanged.
+28. `dropTargets(L1.hazards, HAZARD_KINDS, S(0), [])` →
+    `['cobbles-1', 'neighbour-1', 'bells-1']` in level-file order; with
+    `fixedIds ['cobbles-1']` cobbles is missing; with `S(10000)` bells is missing.
+29. Tapping a tray button with count > 0 turns its fill `BUTTON_ACTIVE_COLOUR`,
+    leaves the count as it was, and outlines exactly the current drop targets
+    in `VALID_TILE_COLOUR`. Tapping it again removes highlight and outlines,
+    counts unchanged. Tapping another button moves the highlight there. A
+    count-0 button can't be selected and leaves the current selection as is.
+30. With an item selected, tapping a hazard gives the same result and feedback
+    as dropping it there by drag (criteria 17–20); then nothing is selected.
+    Tapping a tile with no drop target, or outside the game, uses nothing and
+    clears the selection.
+31. With an item selected, in `ready`: tapping any tile does not start the
+    walk; on level 3, tapping or holding a placed sign does not turn or pick it
+    up. With nothing selected, Week 3 and earlier taps behave as before.
+32. Selecting an item clears a selected sign and its outlines, and the reverse.
+    Starting a drag clears a selected item. Mouse and touch both work.
+33. While paused, select and drop work and the selection survives tapping
+    **II** and 2x. On `won` the highlight and outlines vanish with the tray; a
+    reload starts with nothing selected.
+
 ## Phone test checklist (owner)
 1. On github.com/Pinzzas/Stroller-God, tap **Actions**: newest run has a green tick.
 2. Open https://pinzzas.github.io/Stroller-God/ sideways. Bottom-left you see
@@ -277,9 +362,24 @@ Also: `validateLevel` gets the `"items"` checks; `parseLevel` adds
    Wait until the gold square has faded (about 10 s): it now shows a red
    outline and a dropped speaker vanishes unused.
 10. Open the `?level=3` link: no tray; signs work as before.
+11. Reload level 1. Tap (don't slide) the brown bar: its button turns yellow,
+    the count stays "2", three hazard tiles get green outlines. The walk has
+    not started. Tap the button again: yellow and outlines go away.
+12. Tap the brown bar, then tap the dark grey-brown square: the bar lands
+    there with a green puff, the count shows "1", yellow goes away.
+13. Tap the dark square button, then tap the white card button: yellow moves
+    to the white card. Tap empty grass: yellow goes away, card count still
+    "1", walk not started.
 
 ## Assumptions (owner, please correct if wrong)
-- Choices 1A, 2A and 3A above.
+- Choices 1A, 2A, 3A, 4A and 5A above.
+- Tap-and-drop is an addition you asked for. DESIGN.md's Controls table only
+  lists dragging; once you approve, I'll add "or tap the item, then the tile"
+  there.
+- The map fills the whole game picture, so "tap outside the grid" mostly means
+  a tile with no hazard (choice 4A); a tap beside the game only happens on a
+  wide desktop window.
+- **II** and 2x keep the selection so you can select, pause, then drop.
 - Items go only on a hazard's own tile; anything else is "not here" (red),
   not a wrong match, so nothing is wasted by a slip of the finger.
 - A wrong drop wastes the item (DESIGN.md) but leaves the hazard fixable.

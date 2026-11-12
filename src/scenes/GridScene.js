@@ -96,7 +96,7 @@ import { findPath } from '../logic/findPath.js';
 import { reroute } from '../logic/route.js';
 import { signAt, canPlaceSign, placeSign, rotateArrow, pickUpSign, pressKind } from '../logic/signs.js';
 import { updateHazards, pulseScale } from '../logic/hazards.js';
-import { dropTarget, dropItem, withFixes, shakeOffset } from '../logic/items.js';
+import { dropTarget, dropItem, dropTargets, selectItem, withFixes, shakeOffset } from '../logic/items.js';
 import { ItemTray, makeItemShape } from './ItemTray.js';
 import { levelIdFromUrl } from '../logic/levelChoice.js';
 import {
@@ -153,6 +153,9 @@ export class GridScene extends Phaser.Scene {
     this.supply = { arrow: 0, wait: 0 };
     for (const type of SIGN_TYPES) this.supply[type] = (levelJson.signs && levelJson.signs[type]) || 0;
     this.selected = null;
+    this.selectedItem = null;
+    this.itemOutlines = [];
+    this.itemOutlineKey = '';
     this.press = null;
     this.signObjects = [];
     this.validOutlines = [];
@@ -194,7 +197,11 @@ export class GridScene extends Phaser.Scene {
 
     this.tray = new ItemTray(this, this.level, this.itemSupply, {
       canDrag: () => this.state !== 'won',
-      onPickUp: () => this.clearSignSelection(),
+      onPickUp: () => {
+        this.clearSignSelection();
+        this.setItemSelection(null);
+      },
+      onTap: (item) => this.tapItemButton(item),
       isTarget: (col, row) => this.targetAt(col, row) !== null,
       onDrop: (item, x, y) => this.dropItemAt(item, x, y),
     });
@@ -225,12 +232,21 @@ export class GridScene extends Phaser.Scene {
         this.changeSigns({ signs: rotateArrow(this.level, this.signs, col, row), supply: this.supply });
       }
     });
+    // A click beside the game picture cancels a selected item.
+    const cancelOutside = (event) => {
+      if (event.target !== this.game.canvas) this.setItemSelection(null);
+    };
+    window.addEventListener('pointerdown', cancelOutside);
+    this.events.once('shutdown', () => window.removeEventListener('pointerdown', cancelOutside));
     this.input.keyboard.addKey(PAUSE_KEY).on('down', () => this.pressPause());
     this.input.keyboard.addKey(SPEED_KEY).on('down', () => this.pressSpeed());
   }
 
   update(time, delta) {
-    if (this.hazardObjects) this.drawHazards();
+    if (this.hazardObjects) {
+      this.drawHazards();
+      this.refreshItemOutlines();
+    }
     if (this.state !== 'walking') return;
     const deltaMs = advanceTime(0, delta, this.state, this.multiplier);
     this.walkMs += deltaMs;
@@ -243,12 +259,17 @@ export class GridScene extends Phaser.Scene {
       this.selected = null;
       this.refreshSignButtons();
       this.refreshValidOutlines();
+      this.setItemSelection(null);
       this.tray.hide();
       this.message.setText(WIN_TEXT).setVisible(true);
     }
   }
 
   handleTap(x, y) {
+    if (this.selectedItem !== null) {
+      this.tapDropItem(x, y);
+      return;
+    }
     if (this.selected !== null && this.state !== 'won') {
       const tile = pixelToTile(x, y, TILE_SIZE, this.level.cols, this.level.rows);
       if (tile !== null && canPlaceSign(this.level, this.signs, this.supply, this.selected, tile.col, tile.row)) {
@@ -299,6 +320,7 @@ export class GridScene extends Phaser.Scene {
     square.on('pointerdown', () => {
       if (this.state === 'won' || this.supply[type] <= 0) return;
       this.selected = this.selected === type ? null : type;
+      if (this.selected !== null) this.setItemSelection(null);
       this.refreshSignButtons();
       this.refreshValidOutlines();
     });
@@ -378,6 +400,10 @@ export class GridScene extends Phaser.Scene {
   // Right-click picks up at once; otherwise wait for the release to tell tap from long press.
   pressSign(pointer, sign) {
     if (this.state === 'won') return;
+    if (this.selectedItem !== null) {
+      this.tapDropItem(pointer.worldX, pointer.worldY);
+      return;
+    }
     if (pointer.rightButtonDown()) {
       this.changeSigns(pickUpSign(this.signs, this.supply, sign.col, sign.row));
       return;
@@ -456,6 +482,46 @@ export class GridScene extends Phaser.Scene {
   // The hazard an item could be dropped on at this tile, or null.
   targetAt(col, row) {
     return dropTarget(this.level.hazards, HAZARD_KINDS, this.hazardStates, this.fixedIds, col, row);
+  }
+
+  // A tray button was tapped: select, switch or unselect an item. Selecting clears a sign.
+  tapItemButton(item) {
+    if (this.state === 'won') return;
+    const chosen = selectItem(this.selectedItem, this.itemSupply, item);
+    if (chosen !== null) this.clearSignSelection();
+    this.setItemSelection(chosen);
+  }
+
+  // A tile was tapped while an item is selected: drop it there (or use nothing), then unselect.
+  tapDropItem(x, y) {
+    this.dropItemAt(this.selectedItem, x, y);
+    this.setItemSelection(null);
+  }
+
+  setItemSelection(item) {
+    this.selectedItem = item;
+    if (this.tray) this.tray.showSelected(item);
+    this.itemOutlineKey = '';
+    this.refreshItemOutlines();
+  }
+
+  // Green outlines on every hazard the selected item could be dropped on.
+  refreshItemOutlines() {
+    const ids = this.selectedItem === null
+      ? []
+      : dropTargets(this.level.hazards, HAZARD_KINDS, this.hazardStates, this.fixedIds);
+    const key = ids.join(',');
+    if (key === this.itemOutlineKey) return;
+    this.itemOutlineKey = key;
+    this.itemOutlines.forEach((outline) => outline.destroy());
+    this.itemOutlines = ids.map((id) => {
+      const hazard = this.level.hazards.find((h) => h.id === id);
+      const { x, y } = tileToPixel(hazard.col, hazard.row, TILE_SIZE);
+      return this.add
+        .rectangle(x, y, TILE_SIZE - TILE_GAP, TILE_SIZE - TILE_GAP)
+        .setStrokeStyle(VALID_TILE_WIDTH, VALID_TILE_COLOUR)
+        .setDepth(DEPTH_VALID_OUTLINES);
+    });
   }
 
   clearSignSelection() {

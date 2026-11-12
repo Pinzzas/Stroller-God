@@ -128,3 +128,4 @@ export const RIGHT_RING_SCALE = 1.6; // ring grows to this size
 export const WRONG_FEEDBACK_MS = 600; // wrong item shrinks and fades this long
 export const WRONG_SHAKE_PX = 6; // hazard shake distance, pixels
 export const WRONG_SHAKE_STEP_MS = 75; // shake changes direction this often
+export const TAP_MOVE_TOLERANCE_PX = 12; // a tray press that moves at most this far is a tap (select), further is a drag

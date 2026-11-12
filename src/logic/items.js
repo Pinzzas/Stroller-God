@@ -60,3 +60,23 @@ export function shakeOffset(elapsedMs, durationMs, px, stepMs) {
   if (elapsedMs < 0 || elapsedMs >= durationMs) return 0;
   return Math.floor(elapsedMs / stepMs) % 2 === 0 ? px : -px;
 }
+
+// A press that ends within tolerancePx of where it started is a 'tap'; further is a 'drag'.
+export function pressGesture(dx, dy, tolerancePx) {
+  return Math.sqrt(dx * dx + dy * dy) <= tolerancePx ? 'tap' : 'drag';
+}
+
+// The item selected after tapping a tray button: tapping the selected one unselects it,
+// an item with count above 0 becomes selected, an empty one changes nothing.
+export function selectItem(selected, supply, item) {
+  if (item === selected) return null;
+  if (supply[item] > 0) return item;
+  return selected;
+}
+
+// Every hazard id that dropTarget would accept, in level order.
+export function dropTargets(hazards, kinds, states, fixedIds) {
+  return hazards
+    .filter((h) => dropTarget(hazards, kinds, states, fixedIds, h.col, h.row) === h.id)
+    .map((h) => h.id);
+}
