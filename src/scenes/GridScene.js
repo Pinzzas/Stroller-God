@@ -73,6 +73,7 @@ import {
   WARNING_PULSE_MS,
   WARNING_PULSE_SCALE,
   DEPTH_HAZARDS,
+  DEPTH_ITEMS,
   DEPTH_TILES,
   DEPTH_VALID_OUTLINES,
   DEPTH_SIGNS,
@@ -80,6 +81,11 @@ import {
   DEPTH_WALKERS,
   DEPTH_BUTTONS,
   DEPTH_TEXTS,
+  RIGHT_FEEDBACK_MS,
+  RIGHT_RING_SCALE,
+  WRONG_FEEDBACK_MS,
+  WRONG_SHAKE_PX,
+  WRONG_SHAKE_STEP_MS,
 } from '../config.js';
 import level01 from '../../levels/level-01.json';
 import level03 from '../../levels/level-03.json';
@@ -90,6 +96,8 @@ import { findPath } from '../logic/findPath.js';
 import { reroute } from '../logic/route.js';
 import { signAt, canPlaceSign, placeSign, rotateArrow, pickUpSign, pressKind } from '../logic/signs.js';
 import { updateHazards, pulseScale } from '../logic/hazards.js';
+import { dropTarget, dropItem, withFixes, shakeOffset } from '../logic/items.js';
+import { ItemTray, makeItemShape } from './ItemTray.js';
 import { levelIdFromUrl } from '../logic/levelChoice.js';
 import {
   stepWalk,
@@ -170,6 +178,9 @@ export class GridScene extends Phaser.Scene {
     this.hazardStates = null;
     this.hazardObjects = this.level.hazards.map((hazard) => this.makeHazardObject(hazard));
     this.refreshHazards();
+    this.itemSupply = this.level.items;
+    this.fixedIds = [];
+    this.shakeStarts = {};
 
     this.pauseButton = this.makeButton(PAUSE_BUTTON_X, PAUSE_LABEL, () => this.pressPause());
     this.speedButton = this.makeButton(SPEED_BUTTON_X, SPEED_LABEL_NORMAL, () => this.pressSpeed());
@@ -180,6 +191,14 @@ export class GridScene extends Phaser.Scene {
       if (this.supply[type] > 0) this.signButtons[type] = this.makeSignButton(type);
     }
     this.redrawSigns();
+
+    this.tray = new ItemTray(this, this.level, this.itemSupply, {
+      canDrag: () => this.state !== 'won',
+      onPickUp: () => this.clearSignSelection(),
+      isTarget: (col, row) => this.targetAt(col, row) !== null,
+      onDrop: (item, x, y) => this.dropItemAt(item, x, y),
+    });
+    this.drawHazards();
 
     this.message = this.add
       .text(GAME_WIDTH / 2, MESSAGE_Y, START_HINT_TEXT, {
@@ -211,7 +230,7 @@ export class GridScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    if (this.hazardObjects) this.animateRings(time);
+    if (this.hazardObjects) this.drawHazards();
     if (this.state !== 'walking') return;
     const deltaMs = advanceTime(0, delta, this.state, this.multiplier);
     this.walkMs += deltaMs;
@@ -224,6 +243,7 @@ export class GridScene extends Phaser.Scene {
       this.selected = null;
       this.refreshSignButtons();
       this.refreshValidOutlines();
+      this.tray.hide();
       this.message.setText(WIN_TEXT).setVisible(true);
     }
   }
@@ -396,24 +416,33 @@ export class GridScene extends Phaser.Scene {
     return { square, ring };
   }
 
-  // Recomputes every hazard's state from the walk clock and the stroller, then draws it.
+  // Recomputes every hazard's state from the walk clock and the stroller.
   refreshHazards() {
     const stroller = pointOnPath(this.path, this.walker.distance);
     this.hazardStates = updateHazards(
       this.level.hazards, HAZARD_KINDS, this.hazardStates, this.walkMs, stroller, HAZARD_TUNING
     );
-    this.hazardStates.forEach((hazard, i) => {
+  }
+
+  // Draws every hazard from its state. Fixed hazards look idle. Runs every frame, even while paused.
+  drawHazards() {
+    const shownStates = withFixes(this.hazardStates, this.fixedIds);
+    shownStates.forEach((hazard, i) => {
       const { square, ring } = this.hazardObjects[i];
       const { x, y } = tileToPixel(hazard.col, hazard.row, TILE_SIZE);
       const type = HAZARD_KINDS[this.level.hazards[i].kind].type;
+      const fixed = hazard.state === 'fixed';
       const goingOff = hazard.state === 'active' && (type === 'triggered' || type === 'timed');
-      square.setPosition(x, y);
+      const started = this.shakeStarts[hazard.id];
+      const shake = started === undefined ? 0 : shakeOffset(this.time.now - started, WRONG_FEEDBACK_MS, WRONG_SHAKE_PX, WRONG_SHAKE_STEP_MS);
+      square.setPosition(x + shake, y);
       square.setScale(goingOff ? HAZARD_ACTIVE_SCALE : 1);
       square.setAlpha(hazard.state === 'done' ? HAZARD_DONE_ALPHA : 1);
       ring.setPosition(x, y);
-      ring.setVisible(hazard.state === 'warning' || goingOff);
+      ring.setVisible(!fixed && (hazard.state === 'warning' || goingOff));
       ring.setData('warning', hazard.state === 'warning');
     });
+    this.animateRings(this.time.now);
   }
 
   // The warning ring pulses; the going-off ring stays solid. Only an animation.
@@ -422,6 +451,62 @@ export class GridScene extends Phaser.Scene {
     for (const { ring } of this.hazardObjects) {
       ring.setScale(ring.getData('warning') ? scale : HAZARD_ACTIVE_SCALE);
     }
+  }
+
+  // The hazard an item could be dropped on at this tile, or null.
+  targetAt(col, row) {
+    return dropTarget(this.level.hazards, HAZARD_KINDS, this.hazardStates, this.fixedIds, col, row);
+  }
+
+  clearSignSelection() {
+    this.selected = null;
+    this.refreshSignButtons();
+    this.refreshValidOutlines();
+  }
+
+  // An item was let go at x, y. Uses it up if it landed on a hazard, then shows right or wrong.
+  dropItemAt(item, x, y) {
+    if (this.state === 'won') return;
+    const tile = pixelToTile(x, y, TILE_SIZE, this.level.cols, this.level.rows);
+    if (tile === null) return;
+    const drop = dropItem(
+      this.level.hazards, HAZARD_KINDS, this.hazardStates, this.fixedIds, this.itemSupply, item, tile.col, tile.row
+    );
+    if (drop.result === 'none') return;
+    this.itemSupply = drop.supply;
+    this.fixedIds = drop.fixedIds;
+    this.tray.refresh(this.itemSupply);
+    const centre = tileToPixel(tile.col, tile.row, TILE_SIZE);
+    const shape = makeItemShape(this, item, centre.x, centre.y).setDepth(DEPTH_ITEMS);
+    if (drop.result === 'right') this.showRightMatch(centre);
+    else this.showWrongMatch(shape, drop.hazardId);
+  }
+
+  // The item stays; a green ring puffs out.
+  showRightMatch(centre) {
+    const ring = this.add
+      .circle(centre.x, centre.y, HAZARD_RING_RADIUS)
+      .setStrokeStyle(HAZARD_RING_WIDTH, VALID_TILE_COLOUR)
+      .setDepth(DEPTH_ITEMS);
+    this.tweens.add({
+      targets: ring,
+      scale: RIGHT_RING_SCALE,
+      alpha: 0,
+      duration: RIGHT_FEEDBACK_MS,
+      onComplete: () => ring.destroy(),
+    });
+  }
+
+  // The item shrinks away and the hazard shakes.
+  showWrongMatch(shape, hazardId) {
+    this.shakeStarts[hazardId] = this.time.now;
+    this.tweens.add({
+      targets: shape,
+      scale: 0,
+      alpha: 0,
+      duration: WRONG_FEEDBACK_MS,
+      onComplete: () => shape.destroy(),
+    });
   }
 
   // Puts the stroller at the given distance along the path and the parent just behind it.
