@@ -1,4 +1,5 @@
-import { TILE_SYMBOLS } from '../config.js';
+import { TILE_SYMBOLS, ITEM_TYPES } from '../config.js';
+import { startingItems } from './items.js';
 
 // Turns a valid level file into tile names. Call validateLevel first.
 export function parseLevel(json) {
@@ -12,5 +13,5 @@ export function parseLevel(json) {
       return name;
     })
   );
-  return { id: json.id, name: json.name, cols: json.cols, rows: json.rows, tiles, start, finish, hazards: json.hazards || [] };
+  return { id: json.id, name: json.name, cols: json.cols, rows: json.rows, tiles, start, finish, hazards: json.hazards || [], items: startingItems(json.items, ITEM_TYPES) };
 }

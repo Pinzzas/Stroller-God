@@ -6,6 +6,10 @@
 - **Week 1–2: Grid map** — level 1 loaded from `levels/level-01.json` and drawn as coloured squares; tap outlines a tile; plain error text if the level file is broken. Spec: `specs/week1-2-grid-map.md`.
 
 ## Leftovers (not urgent)
+- Tray outline stays green/red from the last finger move if a hazard changes state while you hold still. Fix: refresh each frame during a drag. From Week 4 review.
+- Right-click on a tray button starts a drag; right-click on the grid during a drag in `ready` can start the walk. From Week 4 review.
+- `validateLevel` message for `items` says "list" but it is a set of counts like `{ "plank": 2 }`. From Week 4 review.
+- `GridScene.js` is about 540 lines. Move hazard drawing into its own file (rule 7). From Week 4 review.
 - `validateLevel` crashes (blank screen) on a `null` entry in `hazards`. From Week 3–4 review.
 - `validateLevel` crashes if a hazard sits on a tile row that is missing from the file. From Week 3–4 review.
 - Hazard kinds like `"constructor"` pass as known (use `Object.hasOwn`). Same lookup in `hazards.js`. From Week 3–4 review.

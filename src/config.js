@@ -78,11 +78,11 @@ export const DEFAULT_LEVEL_ID = 'level-01'; // opened when the link has no or an
 // Week 3-4: hazards
 export const HAZARD_TYPES = ['static', 'triggered', 'timed', 'roaming']; // allowed types
 export const HAZARD_KINDS = {
-  cobbles: { type: 'static', colour: 0x6b6259 }, // rough patch
-  neighbour: { type: 'triggered', colour: 0xb48ad6 }, // a person
-  bells: { type: 'timed', colour: 0xd9a521 }, // a bell
-  pigeons: { type: 'roaming', colour: 0x8a94a6 }, // a swarm
-}; // kind -> type and placeholder colour
+  cobbles: { type: 'static', colour: 0x6b6259, item: 'plank' }, // rough patch
+  neighbour: { type: 'triggered', colour: 0xb48ad6, item: 'shh' }, // a person
+  bells: { type: 'timed', colour: 0xd9a521, item: 'speaker' }, // a bell
+  pigeons: { type: 'roaming', colour: 0x8a94a6, item: 'breadcrumbs' }, // a swarm
+}; // kind -> type, placeholder colour and its one correct item
 export const HAZARD_WARNING_MS = 2500; // timed hazards warn this long before atMs
 export const TIMED_ACTIVE_MS = 4000; // how long a timed hazard goes off
 export const TRIGGER_RADIUS_TILES = 2; // triggered hazard goes off within this tile distance
@@ -97,6 +97,7 @@ export const HAZARD_RING_WIDTH = 4; // ring line thickness, pixels
 export const WARNING_PULSE_MS = 400; // half a pulse (grow or shrink)
 export const WARNING_PULSE_SCALE = 1.25; // biggest ring size while pulsing
 export const DEPTH_HAZARDS = 0.5; // between tiles and green outlines
+export const DEPTH_ITEMS = 0.75; // placed items: above hazards, below sign outlines
 
 // Draw order, bottom to top
 export const DEPTH_TILES = 0;
@@ -106,3 +107,24 @@ export const DEPTH_TAP_OUTLINE = 3;
 export const DEPTH_WALKERS = 4;
 export const DEPTH_BUTTONS = 5;
 export const DEPTH_TEXTS = 6;
+export const DEPTH_DRAG = 7; // dragged item: above everything
+
+// Week 4: item tray
+export const ITEM_TYPES = ['plank', 'speaker', 'shh']; // allowed keys in a level's "items" field, and tray order
+export const ITEM_KINDS = {
+  plank: { colour: 0x9a6a3a, width: 44, height: 16 }, // flat brown bar
+  speaker: { colour: 0x3b3f4a, width: 30, height: 30 }, // dark grey square
+  shh: { colour: 0xfafafa, width: 24, height: 34 }, // white upright card
+}; // item -> placeholder rectangle, pixels
+export const ITEM_BUTTON_SIZE = 56; // tray button square, pixels
+export const ITEM_TRAY_Y = 544; // centre height of the tray
+export const ITEM_TRAY_FIRST_X = 48; // centre x of the first tray button
+export const ITEM_TRAY_SPACING = 72; // gap between tray button centres
+export const ITEM_COUNT_OFFSET = 20; // count sits this far right of and below the button centre
+export const INVALID_TILE_COLOUR = 0xc0504d; // red outline: can't drop here
+export const DROP_OUTLINE_WIDTH = 4; // drop outline thickness, pixels
+export const RIGHT_FEEDBACK_MS = 600; // green ring puff after a right match
+export const RIGHT_RING_SCALE = 1.6; // ring grows to this size
+export const WRONG_FEEDBACK_MS = 600; // wrong item shrinks and fades this long
+export const WRONG_SHAKE_PX = 6; // hazard shake distance, pixels
+export const WRONG_SHAKE_STEP_MS = 75; // shake changes direction this often

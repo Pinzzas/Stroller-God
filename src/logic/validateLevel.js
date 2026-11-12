@@ -1,4 +1,4 @@
-import { TILE_SYMBOLS, WALKABLE_TILES, SIGN_TYPES, HAZARD_KINDS, TRIGGER_RADIUS_TILES } from '../config.js';
+import { TILE_SYMBOLS, WALKABLE_TILES, SIGN_TYPES, ITEM_TYPES, HAZARD_KINDS, TRIGGER_RADIUS_TILES } from '../config.js';
 
 const STEPS = [
   { col: 0, row: -1 },
@@ -40,6 +40,17 @@ export function validateLevel(json) {
       for (const [key, count] of Object.entries(signs)) {
         if (!SIGN_TYPES.includes(key)) problems.push(`Unknown sign type "${key}"`);
         else if (!Number.isInteger(count) || count < 0) problems.push(`Sign count for "${key}" must be a whole number, 0 or more`);
+      }
+    }
+  }
+  if (json.items !== undefined) {
+    const items = json.items;
+    if (items === null || typeof items !== 'object' || Array.isArray(items)) {
+      problems.push('"items" must be a list of item counts');
+    } else {
+      for (const [key, count] of Object.entries(items)) {
+        if (!ITEM_TYPES.includes(key)) problems.push(`Unknown item type "${key}"`);
+        else if (!Number.isInteger(count) || count < 0) problems.push(`Item count for "${key}" must be a whole number, 0 or more`);
       }
     }
   }
