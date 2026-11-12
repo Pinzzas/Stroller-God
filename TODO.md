@@ -1,6 +1,7 @@
 # TODO
 
 ## Done (accepted by owner)
+- **Week 4: Item tray** — level 1 has a tray (2 planks, 1 speaker, 1 "Shh" card) with counts. Drag an item onto a hazard, or tap an item then tap a hazard. Right match: item stays, green puff, hazard calms. Wrong match: item is used up, hazard shakes. Dropping elsewhere uses nothing. Doesn't affect the baby yet. Spec: `specs/week4-item-tray.md`.
 - **Week 3–4: Hazards** — level 1 shows the church bells (timed), chatty neighbour (triggered) and cobbles (static); level 3 test map has roaming pigeons. Hazards show warning, going-off and done looks, and freeze on pause. They don't affect the baby yet. Spec: `specs/week3-4-hazards.md`.
 - **Week 2: Walking** — parent and stroller walk from home to the park bench at 1 tile per second; tap to start; pause (Space or "II" button) and 2x speed (F or "1x/2x" button); win message at the bench. Spec: `specs/week2-walking.md`.
 - **Week 1–2: Grid map** — level 1 loaded from `levels/level-01.json` and drawn as coloured squares; tap outlines a tile; plain error text if the level file is broken. Spec: `specs/week1-2-grid-map.md`.
